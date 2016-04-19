@@ -436,15 +436,17 @@ public class LDAPLookup implements LookupManager{
         	ItemPath item = new ItemPath(uuid);
             LDAPEntry anEntry=mLDAPAuth.getAuthObject().read(getDN(item)+mLocalPath,attr);
             String[] values = LDAPLookupUtils.getAllAttributeValues(anEntry, "objectclass");
+            boolean isItem = false;
             if (values != null) {
             	for (String type : values) {
-            		if (type.equals("cristalentity"))
-                        return item;
-                    else if (type.equals("cristalagent"))
+            		if (type.equals("cristalentity"))                        
+                        isItem = true;
+                    else if (type.equals("cristalagent"))                        
                         return new AgentPath(item);
             	}
             }
-            throw new ObjectNotFoundException("Not an entity '"+uuid+"'");
+            if (isItem) return item;
+            else throw new ObjectNotFoundException("Not an entity '"+uuid+"'");
 
         } catch (LDAPException ex) {
             if (ex.getResultCode() == LDAPException.NO_SUCH_OBJECT)
