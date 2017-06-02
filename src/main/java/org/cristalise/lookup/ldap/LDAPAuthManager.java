@@ -21,8 +21,10 @@
 package org.cristalise.lookup.ldap;
 
 import org.apache.commons.lang3.StringUtils;
+import org.cristalise.kernel.common.AccessRightsException;
 import org.cristalise.kernel.common.InvalidDataException;
 import org.cristalise.kernel.common.ObjectNotFoundException;
+import org.cristalise.kernel.lookup.AgentPath;
 import org.cristalise.kernel.process.Gateway;
 import org.cristalise.kernel.process.auth.Authenticator;
 import org.cristalise.kernel.utils.Logger;
@@ -38,9 +40,10 @@ public class LDAPAuthManager implements Authenticator {
     public LDAPAuthManager() {}
 
     @Override
-    public boolean authenticate(String agentName, String password, String resource) 
-            throws InvalidDataException, ObjectNotFoundException
+    public String authenticate(String agentName, String password, String resource) throws AccessRightsException
     {
+        AccessRightsException failedLoginException = new AccessRightsException("Authentication failed, username-password combination does not exist");
+
         ldapProps = new LDAPProperties(Gateway.getProperties());
 
         if (ldapProps.mHost != null && ldapProps.mPort != null && ldapProps.mLocalPath != null ) {
@@ -52,7 +55,8 @@ public class LDAPAuthManager implements Authenticator {
                 LDAPLookup anonLookup = new LDAPLookup();
                 anonLookup.initPaths(ldapProps);
                 anonLookup.open(this);
-                String agentDN = anonLookup.getFullDN(anonLookup.getAgentPath(agentName));
+                AgentPath agentPath = anonLookup.getAgentPath(agentName);
+				String agentDN = anonLookup.getFullDN(agentPath);
                 anonLookup.close();
 
                 //found agentDN, try to log in with it
@@ -60,25 +64,25 @@ public class LDAPAuthManager implements Authenticator {
                 ldapProps.mUser = agentDN;
                 ldapProps.mPassword = password;
                 mLDAPConn = LDAPLookupUtils.createConnection(ldapProps);
-                return true;
+                return Gateway.getAuthManager().generateToken(agentPath);
             } 
-            catch (LDAPException e) {
+            catch (Exception e) {
                 Logger.error(e);
-                return false;
+				throw failedLoginException;
             }
         }
         else {
-            throw new InvalidDataException("Cannot log in. Some connection properties (host, port, localPath) are not set.");
+            throw failedLoginException;
         }
 
     }
 
     @Override
-    public boolean authenticate(String resource) throws InvalidDataException, ObjectNotFoundException {
+    public boolean authenticate(String resource) throws AccessRightsException {
         ldapProps = new LDAPProperties(Gateway.getProperties());
 
         if (StringUtils.isAnyBlank(ldapProps.mUser, ldapProps.mPassword)) {
-            throw new InvalidDataException("LDAP root user properties not found in config.");
+            throw new AccessRightsException("LDAP root user properties not found in config.");
         }
 
         try {
