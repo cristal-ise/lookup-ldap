@@ -815,6 +815,14 @@ public class LDAPLookup implements LookupManager {
     }
 
     @Override
+    public void setAgentPassword(AgentPath agent, String newPassword, boolean temporary)
+            throws ObjectNotFoundException, ObjectCannotBeUpdated, NoSuchAlgorithmException
+    {
+        Logger.warning("LDAPLookup.setAgentPassword() - Temporary passwrod is not implemented, original method is used");
+        setAgentPassword(agent, newPassword);
+    }
+
+    @Override
     public String getAgentName(AgentPath agentPath) throws ObjectNotFoundException {
         LDAPEntry agentEntry = LDAPLookupUtils.getEntry(mLDAPAuth.getAuthObject(), getFullDN(agentPath));
         return LDAPLookupUtils.getFirstAttributeValue(agentEntry, "uid");
